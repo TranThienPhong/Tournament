@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sơ Đồ Thi Đấu 75 Đội</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    import React, { useState } from 'react';
+
+    export default function TournamentBracket() {
+      const [teams, setTeams] = useState(
+        Array.from({ length: 75 }, (_, i) => `Đội ${i + 1}`)
+      );
+      const [matches, setMatches] = useState([]);
+      const [generated, setGenerated] = useState(false);
+
+      const generateBracket = () => {
+        const shuffled = [...teams].sort(() => Math.random() - 0.5);
+        const newMatches = [];
+        let matchId = 1;
+
+        // Vòng 1: 75 đội -> cần 38 trận (37 trận đấu loại + 1 đội bye)
+        // 75 = 2^6 + 11, nên cần loại 11 đội để còn 64 đội
+        // Vậy vòng 1 có 11 trận, 53 đội vào thẳng vòng 2
+
+        const round1Teams = shuffled.slice(0, 22); // 22 đội đá vòng 1
+        const byeTeams = shuffled.slice(22); // 53 đội vào thẳng vòng 2
+
+        // Vòng 1: 11 trận
+        for (let i = 0; i < round1Teams.length; i += 2) {
+          newMatches.push({
+            id: matchId++,
+            round: 1,
+            team1: round1Teams[i],
+            team2: round1Teams[i + 1],
+            score1: '',
+            score2: '',
+            winner: '',
+            note: ''
+          });
+        }
+
+        // Vòng 2: 53 + 11 = 64 đội -> 32 trận
+        const round2Count = 32;
+        for (let i = 0; i < round2Count; i++) {
+          newMatches.push({
+            id: matchId++,
+            round: 2,
+            team1: i < byeTeams.length ? byeTeams[i] : 'Chờ vòng 1',
+            team2: 'Chờ vòng 1',
+            score1: '',
+            score2: '',
+            winner: '',
+            note: ''
+          });
+        }
+
+        // Vòng 3: 32 đội -> 16 trận
+        for (let i = 0; i < 16; i++) {
+          newMatches.push({
+            id: matchId++,
+            round: 3,
+            team1: 'Chờ vòng 2',
+            team2: 'Chờ vòng 2',
+            score1: '',
+            score2: '',
+            winner: '',
+            note: ''
+          });
+        }
+
+        // Vòng 4: 16 đội -> 8 trận
+        for (let i = 0; i < 8; i++) {
+          newMatches.push({
+            id: matchId++,
+            round: 4,
+            team1: 'Chờ vòng 3',
+            team2: 'Chờ vòng 3',
+            score1: '',
+            score2: '',
+            winner: '',
+            note: ''
+          });
+        }
+
+        // Tứ kết: 8 đội -> 4 trận
+        for (let i = 0; i < 4; i++) {
+          newMatches.push({
+            id: matchId++,
+            round: 'Tứ kết',
+            team1: 'Chờ vòng 4',
+            team2: 'Chờ vòng 4',
+            score1: '',
+            score2: '',
+            winner: '',
+            note: ''
+          });
+        }
+
+        // Bán kết: 4 đội -> 2 trận
+        for (let i = 0; i < 2; i++) {
+          newMatches.push({
+            id: matchId++,
+            round: 'Bán kết',
+            team1: 'Chờ tứ kết',
+            team2: 'Chờ tứ kết',
+            score1: '',
+            score2: '',
+            winner: '',
+            note: ''
+          });
+        }
+
+        // Chung kết
+        newMatches.push({
+          id: matchId++,
+          round: 'Chung kết',
+          team1: 'Chờ bán kết',
+          team2: 'Chờ bán kết',
+          score1: '',
+          score2: '',
+          winner: '',
+          note: ''
+        });
+
+        setMatches(newMatches);
+        setGenerated(true);
+      };
+
+      const updateMatch = (id, field, value) => {
+        setMatches(prev => prev.map(m =>
+          m.id === id ? { ...m, [field]: value } : m
+        ));
+      };
+
+      const exportToCSV = () => {
+        let csv = 'Trận đấu,Vòng,Đội 1,Tỷ số 1,Đội 2,Tỷ số 2,Đội thắng,Ghi chú\n';
+
+        matches.forEach(m => {
+          const row = [
+            `Trận ${m.id}`,
+            m.round,
+            m.team1,
+            m.score1,
+            m.team2,
+            m.score2,
+            m.winner,
+            m.note
+          ].map(cell => `"${cell}"`).join(',');
+          csv += row + '\n';
+        });
+
+        // Thêm BOM để Excel hiển thị đúng tiếng Việt
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'So_do_thi_dau_75_doi.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      const exportToExcel = () => {
+        // Tạo HTML table để Excel có thể mở
+        let html = `
+      <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid black; padding: 8px; text-align: left; }
+          th { background-color: #4F46E5; color: white; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Trận đấu</th>
+              <th>Vòng</th>
+              <th>Đội 1</th>
+              <th>Tỷ số 1</th>
+              <th>Đội 2</th>
+              <th>Tỷ số 2</th>
+              <th>Đội thắng</th>
+              <th>Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+        matches.forEach(m => {
+          html += `
+        <tr>
+          <td>Trận ${m.id}</td>
+          <td>${m.round}</td>
+          <td>${m.team1}</td>
+          <td>${m.score1}</td>
+          <td>${m.team2}</td>
+          <td>${m.score2}</td>
+          <td>${m.winner}</td>
+          <td>${m.note}</td>
+        </tr>
+      `;
+        });
+
+        html += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'So_do_thi_dau_75_doi.xls');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-4xl font-bold text-center text-indigo-900 mb-8">
+              Sơ Đồ Thi Đấu 75 Đội
+            </h1>
+
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+              <div className="flex gap-4 justify-center flex-wrap">
+                <button
+                  onClick={generateBracket}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                >
+                  🎲 Tạo Sơ Đồ Thi Đấu
+                </button>
+
+                {generated && (
+                  <>
+                    <button
+                      onClick={exportToExcel}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                    >
+                      📊 Xuất File Excel (.xls)
+                    </button>
+                    <button
+                      onClick={exportToCSV}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                    >
+                      📄 Xuất File CSV
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {generated && (
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="mb-4 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    Danh sách trận đấu: {matches.length} trận
+                  </h2>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-indigo-600 text-white">
+                        <th className="p-3 text-left border">Trận</th>
+                        <th className="p-3 text-left border">Vòng</th>
+                        <th className="p-3 text-left border">Đội 1</th>
+                        <th className="p-3 text-center border">Tỷ số</th>
+                        <th className="p-3 text-left border">Đội 2</th>
+                        <th className="p-3 text-left border">Đội thắng</th>
+                        <th className="p-3 text-left border">Ghi chú</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matches.map(match => (
+                        <tr key={match.id} className="hover:bg-gray-50">
+                          <td className="p-3 border font-semibold">{match.id}</td>
+                          <td className="p-3 border">
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-sm">
+                              {match.round}
+                            </span>
+                          </td>
+                          <td className="p-3 border">{match.team1}</td>
+                          <td className="p-3 border">
+                            <div className="flex gap-2 items-center justify-center">
+                              <input
+                                type="text"
+                                value={match.score1}
+                                onChange={(e) => updateMatch(match.id, 'score1', e.target.value)}
+                                className="w-12 p-1 border rounded text-center"
+                                placeholder="0"
+                              />
+                              <span className="font-bold">-</span>
+                              <input
+                                type="text"
+                                value={match.score2}
+                                onChange={(e) => updateMatch(match.id, 'score2', e.target.value)}
+                                className="w-12 p-1 border rounded text-center"
+                                placeholder="0"
+                              />
+                            </div>
+                          </td>
+                          <td className="p-3 border">{match.team2}</td>
+                          <td className="p-3 border">
+                            <input
+                              type="text"
+                              value={match.winner}
+                              onChange={(e) => updateMatch(match.id, 'winner', e.target.value)}
+                              className="w-full p-1 border rounded"
+                              placeholder="Đội thắng"
+                            />
+                          </td>
+                          <td className="p-3 border">
+                            <input
+                              type="text"
+                              value={match.note}
+                              onChange={(e) => updateMatch(match.id, 'note', e.target.value)}
+                              className="w-full p-1 border rounded"
+                              placeholder="Ghi chú..."
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {!generated && (
+              <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+                <div className="text-6xl mb-4">🏆</div>
+                <p className="text-gray-600 text-lg">
+                  Nhấn "Tạo Sơ Đồ Thi Đấu" để bắt đầu
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+  </script>
+</body>
+
+</html>
